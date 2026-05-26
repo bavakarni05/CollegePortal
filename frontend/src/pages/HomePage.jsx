@@ -1,0 +1,1 @@
+/* This file is no longer used as the root path now points to StudentRegisterPage.jsx */

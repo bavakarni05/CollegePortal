@@ -1,0 +1,29 @@
+# College Portal
+
+## Frontend
+
+1. Open `frontend` folder.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the React app:
+   ```bash
+   npm run dev
+   ```
+
+The frontend will run on the port shown by Vite (usually `http://localhost:5173`).
+
+## Backend
+
+1. Open `backend` folder.
+2. Build and run with Maven:
+   ```bash
+   mvn spring-boot:run
+   ```
+
+The backend will run on `http://localhost:8082`.
+
+## Test API
+
+Open `http://localhost:8082/api/health` to verify the Spring Boot backend is running.
