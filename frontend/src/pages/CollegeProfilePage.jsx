@@ -46,15 +46,21 @@ export default function CollegeProfilePage() {
 
   const fetchProfile = async () => {
     try {
+      const headers = authHeaders();
+      console.log('CollegeProfile: Fetching profile with headers:', headers);
       const res = await fetch(`${API_BASE_URL}/college/profile`, {
-        headers: authHeaders(),
+        headers: headers,
       });
+      console.log('CollegeProfile: Response status:', res.status);
       const data = await res.json();
+      console.log('CollegeProfile: Response data:', data);
       if (res.ok && data) {
         setProfile(sanitizeProfileData(data));
       } else if (res.status === 404) {
         // New college, use default
         setProfile(prev => ({ ...prev, name: user.collegeName || '' }));
+      } else {
+        console.error('CollegeProfile: Error response:', data);
       }
     } catch (err) {
       console.error('Failed to fetch profile:', err);
