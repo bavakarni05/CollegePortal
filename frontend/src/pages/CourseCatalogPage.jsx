@@ -23,11 +23,18 @@ export default function CourseCatalogPage() {
 
   useEffect(() => {
     const init = async () => {
-      const res = await fetch(`${API_BASE_URL}/college/profile`, { headers: authHeaders() });
+      const headers = authHeaders();
+      console.log('CourseCatalog: Fetching profile with headers:', headers);
+      const res = await fetch(`${API_BASE_URL}/college/profile`, { headers: headers });
+      console.log('CourseCatalog: Response status:', res.status);
       if (res.ok) {
         const data = await res.json();
+        console.log('CourseCatalog: Profile data:', data);
         setCollegeId(data.id);
         fetchCourses(data.id);
+      } else {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('CourseCatalog: Error response:', errorData);
       }
     };
     init();

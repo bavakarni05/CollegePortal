@@ -6,6 +6,6 @@ COPY . .
 
 RUN mvn clean package -DskipTests
 
-EXPOSE 8080
+EXPOSE 8082
 
 ENTRYPOINT ["sh", "-c", "java -jar target/*.jar"]
