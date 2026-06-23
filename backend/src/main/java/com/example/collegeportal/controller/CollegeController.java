@@ -1,10 +1,5 @@
 package com.example.collegeportal.controller;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +8,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,9 +30,10 @@ import com.example.collegeportal.repository.CollegeRepository;
 import com.example.collegeportal.repository.UserRepository;
 import com.example.collegeportal.security.JwtUtil;
 
+
 @RestController
 @RequestMapping("/api/college")
-@CrossOrigin(origins = "*", allowedHeaders = "*")
+@CrossOrigin(origins = "https://benevolent-manatee-9c00b9.netlify.app", allowedHeaders = "*")
 public class CollegeController {
 
     @Autowired
@@ -57,8 +51,11 @@ public class CollegeController {
     @Autowired
     private CourseRepository courseRepository;
 
-    @Value("${file.upload-dir:uploads}")
-    private String uploadDir;
+    @Autowired
+    private CloudinaryService cloudinaryService;
+
+    @Autowired
+    private CollegeService collegeService;
 
     // Get current college profile
     @GetMapping("/profile")
@@ -78,7 +75,8 @@ public class CollegeController {
 
             return ResponseEntity.ok(college.get());
         } catch (Exception e) {
-            return ResponseEntity.status(401).body(Map.of("error", "Invalid token"));
+            String msg = (e.getMessage() != null) ? e.getMessage() : "Invalid token or session expired";
+            return ResponseEntity.status(401).body(Map.of("error", msg));
         }
     }
 
@@ -190,7 +188,8 @@ public class CollegeController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
-            String msg = e.getMessage() != null ? e.getMessage() : e.toString();
+            e.printStackTrace();
+            String msg = (e.getMessage() != null) ? e.getMessage() : "An unexpected database error occurred";
             error.put("error", "Database error: " + msg);
             return ResponseEntity.status(500).body(error);
         }
@@ -205,14 +204,16 @@ public class CollegeController {
             @RequestParam String quota,
             @RequestParam String studentName,
             @RequestParam String studentEmail,
-            @RequestParam String studentPhone,
+            @RequestParam(required = false) String studentPhone,
             @RequestParam Double tenthMark,
             @RequestParam Double twelfthMark,
             @RequestParam Double cutoffMark,
-            @RequestPart(required = false) MultipartFile tenthMarksheet,
-            @RequestPart(required = false) MultipartFile twelfthMarksheet,
-            @RequestPart(required = false) MultipartFile photo) {
+            @RequestParam(required = false) MultipartFile tenthMarksheet,
+            @RequestParam(required = false) MultipartFile twelfthMarksheet,
+            @RequestParam(required = false) MultipartFile photo) {
         try {
+            System.out.println("Received application request for college: " + collegeId + " from: " + studentEmail);
+
             Optional<College> collegeOpt = collegeRepository.findById(collegeId);
             if (collegeOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("error", "College not found"));
             College college = collegeOpt.get();
@@ -224,7 +225,9 @@ public class CollegeController {
                 .filter(c -> (c.getName() + " (" + (c.getQuota() != null ? c.getQuota() : "N/A") + ")").equals(fullCourseName))
                 .findFirst().orElse(null);
 
+            System.out.println("Processing application for course: " + fullCourseName);
             if (applicationRepository.existsByCollegeIdAndCourseNameAndStudentEmailIgnoreCase(collegeId, fullCourseName, studentEmail)) {
+                System.out.println("Duplicate application detected for: " + studentEmail);
                 return ResponseEntity.status(409).body(Map.of("error", "You have already applied for this course at this college."));
             }
             
@@ -241,7 +244,22 @@ public class CollegeController {
             app.setCollegeId(collegeId);
             app.setCollegeName(college.getName());
             app.setCourseName(fullCourseName);
-            app.setStatus(selectedCourse != null && selectedCourse.getSeats() <= 0 ? "WAITING_LIST" : "PENDING");
+            
+            // Safe check: If course is not found, we shouldn't proceed. 
+            if (selectedCourse == null) {
+                System.err.println("Course not found matching: " + fullCourseName);
+                return ResponseEntity.status(404).body(Map.of("error", "Selected course configuration not found."));
+            }
+
+            Integer currentSeats = (selectedCourse.getSeats() != null) ? selectedCourse.getSeats() : 0;
+            if (currentSeats > 0) {
+                app.setStatus("PENDING");
+                selectedCourse.setSeats(currentSeats - 1);
+                courseRepository.save(selectedCourse);
+            } else {
+                app.setStatus("WAITING_LIST");
+            }
+            
             app.setStudentName(studentName);
             app.setStudentEmail(studentEmail);
             app.setStudentPhone(studentPhone);
@@ -249,99 +267,97 @@ public class CollegeController {
             app.setTwelfthMark(twelfthMark);
             app.setCutoffMark(cutoffMark);
             
-            if (tenthMarksheet != null) app.setTenthMarksheetPath(saveFile(tenthMarksheet));
-            if (twelfthMarksheet != null) app.setTwelfthMarksheetPath(saveFile(twelfthMarksheet));
-            if (photo != null) app.setPhotoPath(saveFile(photo));
+            try {
+                if (tenthMarksheet != null && !tenthMarksheet.isEmpty()) {
+                    System.out.println("Uploading 10th marksheet...");
+                    app.setTenthMarksheetPath(cloudinaryService.uploadFile(tenthMarksheet));
+                }
+                if (twelfthMarksheet != null && !twelfthMarksheet.isEmpty()) {
+                    System.out.println("Uploading 12th marksheet...");
+                    app.setTwelfthMarksheetPath(cloudinaryService.uploadFile(twelfthMarksheet));
+                }
+                if (photo != null && !photo.isEmpty()) {
+                    System.out.println("Uploading photo...");
+                    app.setPhotoPath(cloudinaryService.uploadFile(photo));
+                }
+            } catch (Exception cloudErr) {
+                System.err.println("Cloudinary Upload Error: " + cloudErr.getMessage());
+                // We can choose to continue without files or return error
+                return ResponseEntity.status(500).body(Map.of("error", "File upload failed. Please check your Cloudinary configuration."));
+            }
             
             applicationRepository.save(app);
+            System.out.println("Application saved successfully for: " + studentEmail);
             return ResponseEntity.ok(Map.of("message", "Application submitted successfully"));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+            e.printStackTrace();
+            String msg = (e.getMessage() != null) ? e.getMessage() : "Internal server error";
+            return ResponseEntity.status(500).body(Map.of("error", msg));
         }
-    }
-
-    private String saveFile(MultipartFile file) throws IOException {
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
-        
-        // Use UUID to prevent filename collisions and sanitize the extension
-        String originalName = file.getOriginalFilename();
-        String extension = originalName != null && originalName.contains(".") ? originalName.substring(originalName.lastIndexOf(".")) : "";
-        String fileName = java.util.UUID.randomUUID().toString() + extension;
-
-        Path filePath = Paths.get(uploadDir, fileName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-        return "/uploads/" + fileName; // Return a URL path
     }
 
     @GetMapping("/applications")
     public ResponseEntity<?> getApplications(@RequestHeader("Authorization") String token) {
         try {
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(Map.of("error", "Missing or invalid token"));
+            }
             String jwt = token.substring(7);
             Long userId = Long.parseLong(jwtUtil.parseToken(jwt).getBody().getSubject());
             Optional<College> college = collegeRepository.findByUserId(userId);
             if (college.isEmpty()) return ResponseEntity.status(404).body(Map.of("error", "College not found"));
             return ResponseEntity.ok(applicationRepository.findByCollegeId(college.get().getId()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+            String msg = (e.getMessage() != null) ? e.getMessage() : "Failed to fetch applications";
+            return ResponseEntity.status(500).body(Map.of("error", msg));
         }
     }
 
     @GetMapping("/my-applications")
     public ResponseEntity<?> getMyApplications(@RequestHeader("Authorization") String token) {
         try {
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(Map.of("error", "Missing or invalid token"));
+            }
             String jwt = token.substring(7);
             Long userId = Long.parseLong(jwtUtil.parseToken(jwt).getBody().getSubject());
             return ResponseEntity.ok(applicationRepository.findByStudentId(userId));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+            String msg = (e.getMessage() != null) ? e.getMessage() : "Failed to fetch your applications";
+            return ResponseEntity.status(500).body(Map.of("error", msg));
         }
     }
 
     @PostMapping("/applications/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> data) {
-        Optional<Application> appOpt = applicationRepository.findById(id);
-        if (appOpt.isEmpty()) return ResponseEntity.status(404).body(Map.of("error", "App not found"));
-        
-        Application app = appOpt.get();
-        String oldStatus = app.getStatus();
-        String status = data.get("status");
-        app.setStatus(status);
-        applicationRepository.save(app);
+        try {
+            String status = data.get("status");
+            
+            // Seat increment logic for cancellation
+            if ("CANCELLED".equalsIgnoreCase(status)) {
+                Optional<Application> appOpt = applicationRepository.findById(id);
+                if (appOpt.isPresent()) {
+                    Application app = appOpt.get();
+                    // Only increment if it was occupying a seat (PENDING or ACCEPTED)
+                    if ("PENDING".equalsIgnoreCase(app.getStatus()) || "ACCEPTED".equalsIgnoreCase(app.getStatus())) {
+                        List<Course> courses = courseRepository.findByCollegeId(app.getCollegeId());
+                        courses.stream()
+                            .filter(c -> (c.getName() + " (" + (c.getQuota() != null ? c.getQuota() : "N/A") + ")").equals(app.getCourseName()))
+                            .findFirst()
+                            .ifPresent(c -> {
+                                c.setSeats((c.getSeats() != null ? c.getSeats() : 0) + 1);
+                                courseRepository.save(c);
+                            });
+                    }
+                }
+            }
 
-        if ("ACCEPTED".equals(status) && !"ACCEPTED".equals(oldStatus)) {
-            List<Course> courses = courseRepository.findByCollegeId(app.getCollegeId());
-            for (Course course : courses) {
-                String fullCourseName = course.getName() + " (" + (course.getQuota() != null ? course.getQuota() : "N/A") + ")";
-                if (fullCourseName.equals(app.getCourseName())) {
-                    if (course.getSeats() > 0) {
-                        course.setSeats(course.getSeats() - 1);
-                        courseRepository.save(course);
-                    }
-                    break;
-                }
-            }
-        } else if ("ACCEPTED".equals(oldStatus) && !"ACCEPTED".equals(status)) {
-            List<Course> courses = courseRepository.findByCollegeId(app.getCollegeId());
-            for (Course course : courses) {
-                String fullCourseName = course.getName() + " (" + (course.getQuota() != null ? course.getQuota() : "N/A") + ")";
-                if (fullCourseName.equals(app.getCourseName())) {
-                    course.setSeats((course.getSeats() != null ? course.getSeats() : 0) + 1);
-                    courseRepository.save(course);
-                    
-                    List<Application> waiting = applicationRepository.findByCollegeIdAndCourseNameAndStatusOrderByIdAsc(app.getCollegeId(), app.getCourseName(), "WAITING_LIST");
-                    if (!waiting.isEmpty()) {
-                        Application nextInLine = waiting.get(0);
-                        nextInLine.setStatus("PENDING");
-                        applicationRepository.save(nextInLine);
-                    }
-                    break;
-                }
-            }
+            collegeService.updateApplicationStatus(id, status);
+            return ResponseEntity.ok(Map.of("message", "Status updated successfully"));
+        } catch (Exception e) {
+            String msg = (e.getMessage() != null) ? e.getMessage() : "Unknown error";
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to update status: " + msg));
         }
-        return ResponseEntity.ok(Map.of("message", "Status updated"));
     }
 
     // Course Catalog Endpoints
@@ -353,6 +369,9 @@ public class CollegeController {
     @PostMapping("/courses")
     public ResponseEntity<?> updateCourse(@RequestHeader("Authorization") String token, @RequestBody Course course) {
         try {
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body(Map.of("error", "Missing or invalid token"));
+            }
             String jwt = token.substring(7);
             Long userId = Long.parseLong(jwtUtil.parseToken(jwt).getBody().getSubject());
             Optional<College> college = collegeRepository.findByUserId(userId);
@@ -361,7 +380,8 @@ public class CollegeController {
             course.setCollegeId(college.get().getId());
             return ResponseEntity.ok(courseRepository.save(course));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+            String msg = (e.getMessage() != null) ? e.getMessage() : "Failed to update course";
+            return ResponseEntity.status(500).body(Map.of("error", msg));
         }
     }
 
@@ -380,32 +400,53 @@ public class CollegeController {
             @RequestParam(required = false) Integer maxNirf,
             @RequestParam(required = false) Double minPlacement,
             @RequestParam(required = false) Double maxFee,
-            @RequestParam(required = false) Double maxCutoff) {
+            @RequestParam(required = false) Double maxCutoff,
+            @RequestParam(required = false, defaultValue = "false") boolean recommend) {
         try {
             List<College> colleges = collegeRepository.findAll();
             Stream<College> stream = colleges.stream();
 
-            if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
-                stream = stream.filter(c -> category.equalsIgnoreCase(c.getCategory()));
-            }
-            if (type != null && !type.isEmpty() && !"All".equalsIgnoreCase(type)) {
-                stream = stream.filter(c -> type.equalsIgnoreCase(c.getType()));
-            }
-            if (city != null && !city.isEmpty() && !"All".equalsIgnoreCase(city)) {
-                stream = stream.filter(c -> city.equalsIgnoreCase(c.getCity()));
-            }
-            if (maxNirf != null) {
-                stream = stream.filter(c -> c.getNirf() != null && c.getNirf() <= maxNirf);
-            }
-            if (minPlacement != null) {
-                stream = stream.filter(c -> c.getPlacementPercentage() != null && c.getPlacementPercentage() >= minPlacement);
-            }
-            if (maxFee != null) {
-                stream = stream.filter(c -> (c.getMinFee() != null && c.getMinFee() <= maxFee) || 
-                                           (c.getMaxFee() != null && c.getMaxFee() <= maxFee));
-            }
-            if (maxCutoff != null) {
-                stream = stream.filter(c -> c.getCutoff() == null || c.getCutoff() <= maxCutoff);
+            if (recommend) {
+                // Logical OR for profile-based recommendation details
+                final String fCity = city;
+                final Double fMaxFee = maxFee;
+                final Double fMaxCutoff = maxCutoff;
+
+                boolean hasProfileData = (fCity != null && !fCity.isEmpty() && !"All".equalsIgnoreCase(fCity)) || 
+                                         fMaxFee != null || fMaxCutoff != null;
+
+                if (hasProfileData) {
+                    stream = stream.filter(c -> {
+                        if (fCity != null && !fCity.isEmpty() && !"All".equalsIgnoreCase(fCity) && fCity.equalsIgnoreCase(c.getCity())) return true;
+                        if (fMaxFee != null && ((c.getMinFee() != null && c.getMinFee() <= fMaxFee) || (c.getMaxFee() != null && c.getMaxFee() <= fMaxFee))) return true;
+                        if (fMaxCutoff != null && c.getCutoff() != null && c.getCutoff() <= fMaxCutoff) return true;
+                        return false;
+                    });
+                }
+            } else {
+                // Standard Logical AND for search filters
+                if (category != null && !category.isEmpty() && !"All".equalsIgnoreCase(category)) {
+                    stream = stream.filter(c -> category.equalsIgnoreCase(c.getCategory()));
+                }
+                if (type != null && !type.isEmpty() && !"All".equalsIgnoreCase(type)) {
+                    stream = stream.filter(c -> type.equalsIgnoreCase(c.getType()));
+                }
+                if (city != null && !city.isEmpty() && !"All".equalsIgnoreCase(city)) {
+                    stream = stream.filter(c -> city.equalsIgnoreCase(c.getCity()));
+                }
+                if (maxNirf != null) {
+                    stream = stream.filter(c -> c.getNirf() != null && c.getNirf() <= maxNirf);
+                }
+                if (minPlacement != null) {
+                    stream = stream.filter(c -> c.getPlacementPercentage() != null && c.getPlacementPercentage() >= minPlacement);
+                }
+                if (maxFee != null) {
+                    stream = stream.filter(c -> (c.getMinFee() != null && c.getMinFee() <= maxFee) || 
+                                               (c.getMaxFee() != null && c.getMaxFee() <= maxFee));
+                }
+                if (maxCutoff != null) {
+                    stream = stream.filter(c -> c.getCutoff() != null && c.getCutoff() <= maxCutoff);
+                }
             }
 
             return ResponseEntity.ok(stream.collect(Collectors.toList()));

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { API_BASE_URL } from '../config';
 
 const TABS = ['Overview', 'Courses', 'Placements', 'Gallery', 'Reviews'];
 
@@ -23,11 +24,11 @@ export default function CollegeDetailPage() {
   useEffect(() => {
     const fetchCollege = async () => {
       try {
-        const res = await fetch(`http://localhost:8082/api/college/${id}`);
+        const res = await fetch(`${API_BASE_URL}/college/${id}`);
         if (res.ok) {
           const data = await res.json();
           setCollege(data);
-          const cRes = await fetch(`http://localhost:8082/api/college/${id}/courses`);
+          const cRes = await fetch(`${API_BASE_URL}/college/${id}/courses`);
           if (cRes.ok) {
             setCourses(await cRes.json());
           }
@@ -75,14 +76,18 @@ export default function CollegeDetailPage() {
   };
 
   return (
-    <div style={{ background: 'var(--surface-2)', paddingBottom: 60 }}>
+    <div style={{ paddingBottom: 60 }}>
       <div style={{ position: 'relative', minHeight: 320 }}>
         <img src={college.imagePath || 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?w=1200'} alt={college.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,41,0.8), rgba(15,23,41,0.2))' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(17, 19, 24, 0.9), rgba(17, 19, 24, 0.3))' }} />
         <div className="container" style={{ position: 'absolute', bottom: 24, left: 0, right: 0, color: 'white', maxWidth: '100%' }}>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div style={{ width: 88, height: 88, borderRadius: 24, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, color: 'var(--primary)' }}>
-              {college.logoPath ? <img src={college.logoPath} alt="logo" style={{ width: '100%', borderRadius: 24 }} /> : (college.shortName || college.name.charAt(0))}
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ width: 88, height: 88, borderRadius: 24, background: 'var(--bg-raised)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, color: 'var(--info)', overflow: 'hidden', border: '2px solid var(--border)' }}>
+              {college.logoPath && college.logoPath.startsWith('http') || (college.logoPath && college.logoPath.startsWith('data:')) ? (
+                <img src={college.logoPath} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display='none'} />
+              ) : (
+                <span>{college.shortName || college.name.charAt(0)}</span>
+              )}
             </div>
             <div>
               <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -101,14 +106,14 @@ export default function CollegeDetailPage() {
       <div className="container" style={{ marginTop: 28, maxWidth: '100%' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
           {TABS.map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '12px 18px', border: 'none', borderBottom: activeTab === tab ? '3px solid var(--accent)' : '3px solid transparent', background: 'transparent', fontWeight: activeTab === tab ? 700 : 500, color: activeTab === tab ? 'var(--accent)' : 'var(--text-secondary)' }}>
-              {tab}
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '12px 18px', border: 'none', borderBottom: activeTab === tab ? '3px solid var(--info)' : '3px solid transparent', background: 'transparent', fontWeight: activeTab === tab ? 700 : 500 }}>
+              <span style={{ color: activeTab === tab ? 'var(--info)' : 'var(--text-secondary)' }}>{tab}</span>
             </button>
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24 }}>
-          <div>
+        <div className="row g-4">
+          <div className="col-12">
             {activeTab === 'Overview' && (
               <>
                 <div className="card" style={{ padding: 24, marginBottom: 24 }}>
@@ -122,8 +127,8 @@ export default function CollegeDetailPage() {
               <div className="card" style={{ padding: 24 }}>
                 <h3>Detailed Course List & Seat Availability</h3>
                 <div style={{ marginTop: 20, overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-primary)' }}>
+                    <thead style={{ color: 'var(--text-secondary)' }}>
                       <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--border)' }}>
                         <th style={{ padding: 12 }}>Course</th>
                         <th style={{ padding: 12 }}>Quota</th>
@@ -140,7 +145,7 @@ export default function CollegeDetailPage() {
                         const filled = (course.totalSeats || course.seats) - course.seats;
                         return (
                           <React.Fragment key={course.id}>
-                            <tr style={{ borderBottom: '1px solid var(--surface-3)' }}>
+                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
                               <td style={{ padding: 12, fontWeight: 600 }}>{course.name}</td>
                               <td style={{ padding: 12 }}><span className="badge badge-teal">{course.quota || 'General'}</span></td>
                               <td style={{ padding: 12 }}>{course.totalSeats || course.seats}</td>
@@ -162,12 +167,12 @@ export default function CollegeDetailPage() {
                             {course.quota === 'Government Quota' && expandedCourseId === course.id && (
                               <tr style={{ background: 'var(--surface-2)', fontSize: 11 }}>
                                 <td colSpan="7" style={{ padding: '8px 24px' }}>
-                                  <div style={{ padding: '8px 0', borderLeft: '3px solid var(--accent)', paddingLeft: 12 }}>
+                                  <div style={{ padding: '8px 0', borderLeft: '3px solid var(--primary)', paddingLeft: 12 }}>
                                     <strong style={{ display: 'block', marginBottom: 8, fontSize: 12 }}>Government Quota - Community Cutoff Marks</strong>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
                                       {['OC', 'BC', 'MBC', 'SCST', 'BCM'].map(cat => (
-                                        <div key={cat} style={{ background: 'white', padding: 12, borderRadius: 8, border: '1px solid var(--border)', textAlign: 'center' }}>
-                                          <div style={{ fontWeight: 800, color: 'var(--accent)', borderBottom: '1px solid var(--border)', marginBottom: 8, paddingBottom: 4 }}>{cat === 'SCST' ? 'SC/ST' : cat}</div>
+                                        <div key={cat} style={{ background: 'var(--bg-base)', padding: 12, borderRadius: 8, border: '1px solid var(--border)', textAlign: 'center' }}>
+                                          <div style={{ fontWeight: 800, color: 'var(--info)', borderBottom: '1px solid var(--border)', marginBottom: 8, paddingBottom: 4 }}>{cat === 'SCST' ? 'SC/ST' : cat}</div>
                                           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>Min Cutoff</div>
                                           <div style={{ fontWeight: 700, fontSize: 14 }}>{course[`cutoff${cat}`] || 'N/A'}</div>
                                         </div>
@@ -187,7 +192,7 @@ export default function CollegeDetailPage() {
                   <div style={{ marginTop: 24 }}>
                     <h3>Facilities</h3>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
-                      {college.facilities.split(',').map(item => <span key={item} style={{ padding: '8px 12px', background: 'var(--surface-3)', borderRadius: 14, fontSize: 13 }}>{item.trim()}</span>)}
+                      {college.facilities.split(',').map(item => <span key={item} className="badge">{item.trim()}</span>)}
                     </div>
                   </div>
                 )}
@@ -198,15 +203,15 @@ export default function CollegeDetailPage() {
               <div style={{ display: 'grid', gap: 16 }}>
                 <div className="card" style={{ padding: 24 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-                    <div style={{ padding: 18, background: 'var(--surface-3)', borderRadius: 18 }}>
+                    <div style={{ padding: 18, background: 'var(--bg-raised)', borderRadius: 18 }}>
                       <div style={{ fontSize: 24, fontWeight: 700 }}>{college.placementPercentage ? `${college.placementPercentage}%` : 'N/A'}</div>
                       <div style={{ color: 'var(--text-secondary)' }}>Placed Students</div>
                     </div>
-                    <div style={{ padding: 18, background: 'var(--surface-3)', borderRadius: 18 }}>
+                    <div style={{ padding: 18, background: 'var(--bg-raised)', borderRadius: 18 }}>
                       <div style={{ fontSize: 24, fontWeight: 700 }}>{college.avgPackage ? `₹${college.avgPackage} LPA` : 'N/A'}</div>
                       <div style={{ color: 'var(--text-secondary)' }}>Average Package</div>
                     </div>
-                    <div style={{ padding: 18, background: 'var(--surface-3)', borderRadius: 18 }}>
+                    <div style={{ padding: 18, background: 'var(--bg-raised)', borderRadius: 18 }}>
                       <div style={{ fontSize: 24, fontWeight: 700 }}>{college.highestPackage ? `₹${college.highestPackage} LPA` : 'N/A'}</div>
                       <div style={{ color: 'var(--text-secondary)' }}>Highest Package</div>
                     </div>
@@ -215,17 +220,30 @@ export default function CollegeDetailPage() {
                 <div className="card" style={{ padding: 24 }}>
                   <h3>Major Recruiters</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
-                    {college.topRecruiters?.split(',').map(r => <span key={r} style={{ padding: '10px 16px', background: 'var(--surface-3)', borderRadius: 14, fontWeight: 500 }}>{r.trim()}</span>) || 'Contact college for details.'}
+                    {college.topRecruiters?.split(',').map(r => <span key={r} className="badge" style={{ padding: '10px 16px' }}>{r.trim()}</span>) || 'Contact college for details.'}
                   </div>
                 </div>
               </div>
             )}
 
             {activeTab === 'Gallery' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-                {(college.gallery?.split(',') || [college.imagePath]).filter(Boolean).map((img, index) => (
-                  <img key={index} src={img} alt={`Gallery ${index + 1}`} style={{ width: '100%', borderRadius: 18, minHeight: 180, objectFit: 'cover' }} />
-                ))}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+                {(() => {
+                  const galleryStr = college.gallery;
+                  if (!galleryStr) return [<img key="default" src={college.imagePath || 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?w=400'} alt="Default" style={{ width: '100%', borderRadius: 18, minHeight: 180, objectFit: 'cover' }} />];
+                  
+                  // Improved parsing: only split by commas that are followed by "data:" or "http"
+                  const images = [];
+                  const parts = galleryStr.split(/,(?=data:)|,(?=http)/);
+                  
+                  for (let i = 0; i < parts.length; i++) {
+                    let p = parts[i].trim();
+                    if (p) images.push(p);
+                  }
+                  return images.map((img, index) => (
+                    <img key={index} src={img} alt={`Gallery ${index + 1}`} style={{ width: '100%', borderRadius: 18, minHeight: 180, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                  ));
+                })()}
               </div>
             )}
 
@@ -235,58 +253,62 @@ export default function CollegeDetailPage() {
                   <h3>Share your experience</h3>
                   <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
                     {[1, 2, 3, 4, 5].map(value => (
-                      <button key={value} onClick={() => setReviewRating(value)} style={{ border: 'none', background: 'transparent', fontSize: 22, color: value <= reviewRating ? 'var(--gold)' : 'var(--border)' }}>★</button>
+                      <button key={value} onClick={() => setReviewRating(value)} style={{ border: 'none', background: 'transparent', fontSize: 22, color: value <= reviewRating ? '#f59e0b' : '#e2e8f0' }}>★</button>
                     ))}
                   </div>
                   <textarea value={reviewText} onChange={(e) => setReviewText(e.target.value)} className="form-input" rows={4} placeholder="Write a short review" />
-                  <button onClick={submitReview} className="btn btn-primary" style={{ marginTop: 14 }}>Submit Review</button>
+                  <button onClick={submitReview} className="btn btn-primary" style={{ marginTop: 14, padding: '6px 16px', fontSize: '13px' }}>Submit Review</button>
                 </div>
                 {reviews.map(review => (
                   <div key={review.id} className="card" style={{ padding: 22 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div>
                         <strong>{review.author}</strong>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{review.date}</div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>{review.date}</div>
                       </div>
-                      <div style={{ color: 'var(--gold)' }}>{'★'.repeat(review.rating)}</div>
+                      <div style={{ color: '#f59e0b' }}>{'★'.repeat(review.rating)}</div>
                     </div>
-                    <p style={{ color: 'var(--text-secondary)' }}>{review.text}</p>
+                    <p style={{ color: '#64748b' }}>{review.text}</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="card" style={{ padding: 24 }}>
-              <h3>Quick Actions</h3>
-              <button onClick={() => toggleWishlist(college)} className="btn btn-secondary" style={{ width: '100%', marginTop: 16 }}>
-                {wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
-              </button>
-              <button onClick={() => toggleCompare(college)} className="btn btn-primary" style={{ width: '100%', marginTop: 12 }}>
-                {inCompare ? 'Remove from Compare' : 'Add to Compare'}
-              </button>
-              <button 
-                onClick={() => navigate(`/apply/${college.id}`)} 
-                className="btn btn-ghost" 
-                style={{ width: '100%', marginTop: 12, border: '1px solid var(--border)' }}
-              >
-                {allAdmissionsClosed ? 'Join Waiting List' : 'Apply Now'}
-              </button>
-              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--accent)' }}>₹{college.minFee?.toLocaleString()} - ₹{college.maxFee?.toLocaleString()}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Estimated Annual Fee</div>
+          <div className="col-12">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+              <div className="card" style={{ padding: 24 }}>
+                <h3>Quick Actions</h3>
+                <div className="d-flex flex-column align-items-center gap-2 mt-3">
+                  <button onClick={() => toggleWishlist(college)} className="btn btn-secondary w-100">
+                    {wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+                  </button>
+                  <button onClick={() => toggleCompare(college)} className="btn btn-primary w-100">
+                    {inCompare ? 'Remove from Compare' : 'Add to Compare'}
+                  </button>
+                  <button 
+                    onClick={() => navigate(`/apply/${college.id}`)} 
+                    className="btn btn-ghost w-100" 
+                    style={{ border: '1px solid var(--border)' }}
+                  >
+                    {allAdmissionsClosed ? 'Join Waiting List' : 'Apply Now'}
+                  </button>
+                </div>
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--info)' }}>₹{college.minFee?.toLocaleString()} - ₹{college.maxFee?.toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>Estimated Annual Fee</div>
+                </div>
+              </div>
+              <div className="card" style={{ padding: 24 }}>
+                <h3>Contact Info</h3>
+                <div style={{ marginTop: 14, color: '#64748b', lineHeight: 1.8 }}>
+                  <div>Phone: {college.contactPhone}</div>
+                  <div>Email: {college.contactEmail}</div>
+                  <div>Address: {college.location}</div>
+                </div>
               </div>
             </div>
-            <div className="card" style={{ padding: 24 }}>
-              <h3>Contact Info</h3>
-              <div style={{ marginTop: 14, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
-                <div>Phone: {college.contactPhone}</div>
-                <div>Email: {college.contactEmail}</div>
-                <div>Address: {college.location}</div>
-              </div>
-            </div>
-          </aside>
+          </div>
         </div>
       </div>
     </div>

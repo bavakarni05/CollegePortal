@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 :root {
-  --primary: #1a1a2e;
-  --primary-light: #16213e;
-  --accent: #e94560;
-  --accent-hover: #c73652;
+  --primary: #0f1729;
+  --primary-light: #1e293b;
+  --accent: #0f1729;
+  --accent-hover: #1e293b;
   --gold: #f5a623;
   --gold-light: #fef3dc;
   --teal: #0f7173;
@@ -261,4 +261,5 @@ textarea:focus {
 
 .animate-in {
   animation: fadeIn 0.45s ease forwards;
+  
 }

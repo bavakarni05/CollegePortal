@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { API_BASE_URL } from '../config';
 
 export default function CollegeProfilePage() {
   const { user, authHeaders, showToast } = useApp();
@@ -45,7 +46,7 @@ export default function CollegeProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      const res = await fetch('http://localhost:8082/api/college/profile', {
+      const res = await fetch(`${API_BASE_URL}/college/profile`, {
         headers: authHeaders(),
       });
       const data = await res.json();
@@ -80,7 +81,7 @@ export default function CollegeProfilePage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch('http://localhost:8082/api/college/profile', {
+      const res = await fetch(`${API_BASE_URL}/college/profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,24 +110,27 @@ export default function CollegeProfilePage() {
   if (loading) return <div style={{ padding: '60px 24px', textAlign: 'center' }}>Loading...</div>;
 
   return (
-    <div style={{ minHeight: 'calc(100vh - var(--nav-height))', padding: 'calc(var(--nav-height) + 40px) 24px', background: 'var(--surface-2)' }}>
+    <div style={{ minHeight: 'calc(100vh - var(--nav-height))', padding: 'calc(var(--nav-height) + 40px) 24px', background: 'transparent' }}>
       <div className="container" style={{ maxWidth: '100%' }}>
         <div className="card" style={{ padding: 32 }}>
           <h1 className="section-title" style={{ marginBottom: 8 }}>College Profile</h1>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Update your college information to help students find you</p>
 
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 18 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
-              <label>
+          <form onSubmit={handleSubmit} className="row g-3">
+            <div className="col-md-6 col-lg-4">
+              <label className="w-100">
                 Full College Name
                 <input type="text" name="name" value={profile.name} onChange={handleChange} required className="form-input" style={{ marginTop: 8 }} />
               </label>
-              <label>
+            </div>
+            <div className="col-md-6 col-lg-2">
+              <label className="w-100">
                 Short Name (e.g. VIT)
                 <input type="text" name="shortName" value={profile.shortName} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-
-              <label>
+            </div>
+            <div className="col-md-6 col-lg-3">
+              <label className="w-100">
                 Category
                 <select name="category" value={profile.category} onChange={handleChange} required className="form-select" style={{ marginTop: 8 }}>
                   <option value="">Select Category</option>
@@ -137,8 +141,9 @@ export default function CollegeProfilePage() {
                   <option value="Management">Management</option>
                 </select>
               </label>
-
-              <label>
+            </div>
+            <div className="col-md-6 col-lg-3">
+              <label className="w-100">
                 College Type
                 <select name="type" value={profile.type} onChange={handleChange} required className="form-select" style={{ marginTop: 8 }}>
                   <option value="">Select Type</option>
@@ -149,117 +154,131 @@ export default function CollegeProfilePage() {
                 </select>
               </label>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
-              <label>
+            <div className="col-md-3">
+              <label className="w-100">
                 NIRF Ranking
                 <input type="number" name="nirf" min="1" value={profile.nirf} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-              <label>
+            </div>
+            <div className="col-md-3">
+              <label className="w-100">
                 Accreditation (e.g. NAAC A++)
                 <input type="text" name="accreditation" value={profile.accreditation} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-              <label>
+            </div>
+            <div className="col-md-3">
+              <label className="w-100">
                 Website
                 <input type="url" name="website" value={profile.website} onChange={handleChange} className="form-input" placeholder="https://example.com" style={{ marginTop: 8 }} />
               </label>
-
-              <label>
+            </div>
+            <div className="col-md-3">
+              <label className="w-100">
                 Established Year
                 <input type="number" name="establishedYear" min="1800" max={new Date().getFullYear()} value={profile.establishedYear} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
-              <label>
+            <div className="col-md-4">
+              <label className="w-100">
                 City
                 <input type="text" name="city" value={profile.city} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-
-              <label>
+            </div>
+            <div className="col-md-4">
+              <label className="w-100">
                 State
                 <input type="text" name="state" value={profile.state} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-
-              <label>
+            </div>
+            <div className="col-md-4">
+              <label className="w-100">
                 Location / Address
                 <input type="text" name="location" value={profile.location} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
-              <label>
+            <div className="col-md-3">
+              <label className="w-100">
                 Min Annual Fee (₹)
                 <input type="number" name="minFee" value={profile.minFee} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-              <label>
+            </div>
+            <div className="col-md-3">
+              <label className="w-100">
                 Max Annual Fee (₹)
                 <input type="number" name="maxFee" value={profile.maxFee} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-              <label>
-                Avg Package (LPA)
+            </div>
+            <div className="col-md-2">
+              <label className="w-100">
+                Avg Package
                 <input type="number" step="0.1" name="avgPackage" value={profile.avgPackage} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-              <label>
-                Highest Package (LPA)
+            </div>
+            <div className="col-md-2">
+              <label className="w-100">
+                Highest
                 <input type="number" step="0.1" name="highestPackage" value={profile.highestPackage} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-              <label>
+            </div>
+            <div className="col-md-2">
+              <label className="w-100">
                 Placement %
                 <input type="number" name="placementPercentage" value={profile.placementPercentage} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
-              <label>
+            <div className="col-md-6">
+              <label className="w-100">
                 Contact Phone
                 <input type="tel" name="contactPhone" value={profile.contactPhone} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
-              <label>
+            </div>
+            <div className="col-md-6">
+              <label className="w-100">
                 Contact Email
                 <input type="email" name="contactEmail" value={profile.contactEmail} onChange={handleChange} className="form-input" style={{ marginTop: 8 }} />
               </label>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 18 }}>
-              <label>
+            <div className="col-md-6">
+              <label className="w-100">
                 Logo URL
                 <input type="text" name="logoPath" value={profile.logoPath} onChange={handleChange} className="form-input" placeholder="https://..." style={{ marginTop: 8 }} />
               </label>
-              <label>
+            </div>
+            <div className="col-md-6">
+              <label className="w-100">
                 Cover Image URL
                 <input type="text" name="imagePath" value={profile.imagePath} onChange={handleChange} className="form-input" placeholder="https://..." style={{ marginTop: 8 }} />
               </label>
             </div>
-
-            <label>
-              Description
-              <textarea name="description" value={profile.description} onChange={handleChange} className="form-input" placeholder="Tell students about your college..." rows={4} style={{ marginTop: 8 }} />
-            </label>
-
-            <label>
-              Facilities
-              <textarea name="facilities" value={profile.facilities} onChange={handleChange} className="form-input" placeholder="List facilities and amenities" rows={3} style={{ marginTop: 8 }} />
-            </label>
-
-            <label>
-              Top Recruiters
-              <textarea name="topRecruiters" value={profile.topRecruiters} onChange={handleChange} className="form-input" placeholder="Google, Amazon, TCS..." rows={2} style={{ marginTop: 8 }} />
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Separate with commas.</div>
-            </label>
-
-            <label>
-              Gallery URLs
-              <textarea name="gallery" value={profile.gallery} onChange={handleChange} className="form-input" placeholder="https://image1.jpg, https://image2.jpg..." rows={3} style={{ marginTop: 8 }} />
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Comma separated image URLs.</div>
-            </label>
-
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div className="col-12">
+              <label className="w-100">
+                Description
+                <textarea name="description" value={profile.description} onChange={handleChange} className="form-input" placeholder="Tell students about your college..." rows={4} style={{ marginTop: 8 }} />
+              </label>
+            </div>
+            <div className="col-12">
+              <label className="w-100">
+                Facilities
+                <textarea name="facilities" value={profile.facilities} onChange={handleChange} className="form-input" placeholder="List facilities and amenities" rows={3} style={{ marginTop: 8 }} />
+              </label>
+            </div>
+            <div className="col-md-6">
+              <label className="w-100">
+                Top Recruiters
+                <textarea name="topRecruiters" value={profile.topRecruiters} onChange={handleChange} className="form-input" placeholder="Google, Amazon, TCS..." rows={2} style={{ marginTop: 8 }} />
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Separate with commas.</div>
+              </label>
+            </div>
+            <div className="col-md-6">
+              <label className="w-100">
+                Gallery URLs
+                <textarea name="gallery" value={profile.gallery} onChange={handleChange} className="form-input" placeholder="https://image1.jpg, https://image2.jpg..." rows={3} style={{ marginTop: 8 }} />
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Comma separated image URLs.</div>
+              </label>
+            </div>
+            <div className="col-12 mt-4 d-flex gap-2 justify-content-center">
               <button type="submit" className="btn btn-primary" disabled={saving}>
                 {saving ? 'Saving...' : 'Save Profile'}
-              </button>
-              <button type="button" className="btn btn-ghost" onClick={() => navigate('/college-dashboard')}>
-                Cancel
               </button>
             </div>
           </form>

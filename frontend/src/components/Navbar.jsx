@@ -1,123 +1,112 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { FaUserCircle } from 'react-icons/fa';
 
 export default function Navbar() {
-  const { user, logout, wishlist, compareList } = useApp();
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const location = useLocation();
+  const { user, logout } = useApp();
   const navigate = useNavigate();
-  const isHome = location.pathname === '/';
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => setMenuOpen(false), [location]);
+  // Helper to close the mobile menu automatically after navigation
+  const closeNavbar = () => {
+    const navbar = document.getElementById('navbarMain');
+    if (navbar && navbar.classList.contains('show')) {
+      const bootstrap = window.bootstrap;
+      if (bootstrap) {
+        const bsCollapse = bootstrap.Collapse.getInstance(navbar) || new bootstrap.Collapse(navbar);
+        bsCollapse.hide();
+      }
+    }
+  };
 
   return (
-    <header style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 1000,
-      height: 'var(--nav-height)',
-      background: scrolled || !isHome ? '#FFF0F5' : 'transparent',
-      backdropFilter: scrolled || !isHome ? 'blur(12px)' : 'none',
-      borderBottom: scrolled || !isHome ? '1px solid var(--border)' : 'none',
-      transition: 'all 0.3s ease',
-    }}>
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%', maxWidth: '100%' }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 38, height: 38, background: 'var(--accent)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
-            🎓
-          </div>
-          <div>
-            <div style={{ fontFamily: 'Playfair Display', fontSize: 18, fontWeight: 700, color: isHome && !scrolled ? 'white' : 'var(--primary)' }}>
-              EduConnect
-            </div>
-            <div style={{ fontSize: 10, letterSpacing: 0.15, color: isHome && !scrolled ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)' }}>
-              College Admission Portal
-            </div>
-          </div>
+    <nav className="navbar navbar-expand-lg fixed-top px-lg-4" style={{ height: 'var(--nav-height)', background: 'var(--bg-base)', borderBottom: '1px solid var(--border)' }}>
+      <div className="container-fluid">
+        <Link className="navbar-brand d-flex align-items-center" to="/" onClick={closeNavbar} style={{ fontWeight: 800, fontSize: 22, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+          Uni<span style={{ color: 'var(--info)' }}>Gate</span>
         </Link>
+        
+        <button className="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+          <span className="navbar-toggler-icon"></span>
+        </button>
 
-        <nav className="desktop-nav" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {user ? ( // If user is logged in
-            user.role === 'STUDENT' ? (
-              // Student menu
-              [
-                { label: 'Search Colleges', to: '/search' },
-                { label: 'Recommendations', to: '/search?recommend=true' },
-                { label: 'My Applications', to: '/dashboard?view=apps' },
-                { label: 'Compare', to: '/compare', badge: compareList.length }, 
-                { label: 'Wishlist', to: '/wishlist', badge: wishlist.length }
-              ].map(item => (
-                <Link key={item.to} to={item.to} className={`btn ${location.pathname + location.search === item.to ? 'btn-secondary' : 'btn-ghost'}`} style={{
-                  padding: '8px 14px',
-                  color: (location.pathname + location.search !== item.to && isHome && !scrolled) ? 'white' : undefined
-                }}>
-                  {item.label}
-                  {item.badge ? <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--accent)', color: 'white', fontSize: 11, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 6 }}>{item.badge}</span> : null}
-                </Link>
-              ))
-            ) : ( // College menu (currently empty, but can be extended)
-              null
-            )
-          ) : ( // No user logged in, no navigation links here
-            null
-          )}
-        </nav>
+        <div className="collapse navbar-collapse" id="navbarMain">
+          <ul className="navbar-nav ms-auto mb-2 mb-lg-0 text-end">
+            {user && (user.role === 'COLLEGE' ? (
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/college-profile" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>College Profile</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/college-courses" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Course Catalog</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/college-dashboard?view=apps" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Applications</Link>
+                </li>
+              </>
+            ) : (
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/search" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Find Colleges</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/compare" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Compare</Link>
+                </li>
+              </>
+            ))}
+            {user?.role === 'STUDENT' && (
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/profile?view=apps" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>My Applications</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/wishlist" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Wishlist</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/search?recommend=true" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Recommendations</Link>
+                </li>
+              </>
+            )}
+          </ul>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {user ? (
-            <>
-              <button onClick={() => navigate(user.role === 'COLLEGE' ? '/college-dashboard' : '/dashboard')} className="btn btn-secondary" style={{ padding: '8px 14px' }}>
-                {user.role === 'COLLEGE' ? 'Admin' : ' '} {user.name.split('  ')[0]}
-              </button>
-              <button onClick={logout} className="btn btn-ghost" style={{ padding: '8px 14px' }}>
-                Logout
-              </button>
-            </>
-          ) : (
-            <Link to="/?login=true" className="btn btn-primary" style={{ padding: '8px 14px' }}>
-                Register
-              </Link>
-          )}
-
-          <button onClick={() => setMenuOpen(!menuOpen)} className="mobile-menu-btn" style={{ display: 'none', border: 'none', background: 'transparent', fontSize: 22, color: isHome && !scrolled ? 'white' : 'var(--text-primary)' }}>
-            {menuOpen ? '✕' : '☰'}
-          </button>
+          <div className="d-flex align-items-center justify-content-end ms-lg-3">
+            {user ? (
+              <div className="dropdown">
+                <button 
+                  className="btn btn-ghost d-flex align-items-center p-1 rounded-circle" 
+                  type="button" 
+                  id="userDropdown" 
+                  data-bs-toggle="dropdown" 
+                  aria-expanded="false"
+                  style={{ border: 'none', outline: 'none' }}
+                >
+                  <FaUserCircle size={32} />
+                </button>
+                <ul className="dropdown-menu dropdown-menu-end shadow border-0 mt-2" aria-labelledby="userDropdown" style={{ borderRadius: 12, padding: 8, minWidth: 180, backgroundColor: 'var(--bg-raised)', right: 0, left: 'auto' }}>
+                  <li className="px-3 py-2 border-bottom mb-1">
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--primary)' }}>{user.name}</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>{user.role}</div>
+                  </li>
+                  {user.role === 'STUDENT' && (
+                    <li>
+                      <Link className="dropdown-item rounded-2 py-2" to="/profile" onClick={closeNavbar}>
+                        My Profile
+                      </Link>
+                    </li>
+                  )}
+                  <li>
+                    <button className="dropdown-item rounded-2 py-2 text-danger" onClick={() => { logout(); navigate('/'); closeNavbar(); }}>
+                      Logout
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <Link to="/auth?login=true" className="btn btn-primary btn-sm">Login / Register</Link>
+            )}
+          </div>
         </div>
       </div>
-
-      {menuOpen && (
-        <div style={{ background: 'white', borderTop: '1px solid var(--border)', padding: 16 }}>
-          {user && user.role === 'STUDENT' ? (
-            [
-              { label: 'Search Colleges', to: '/search' },
-              { label: 'My Applications', to: '/dashboard?view=apps' },
-              { label: 'Compare', to: '/compare' },
-              { label: 'Wishlist', to: '/wishlist' },
-            ].map(item => (
-              <Link key={item.to} to={item.to} style={{ display: 'block', padding: '10px 0', color: 'var(--text-primary)' }}>{item.label}</Link>
-            ))
-          ) : (
-            <Link to="/" style={{ display: 'block', padding: '10px 0', color: 'var(--text-primary)' }}>Register</Link>
-          )}
-        </div>
-      )}
-
-      <style>{`
-        @media (max-width: 768px) {
-          .desktop-nav { display: none; }
-          .mobile-menu-btn { display: block; }
-        }
-      `}</style>
-    </header>
+    </nav>
   );
 }

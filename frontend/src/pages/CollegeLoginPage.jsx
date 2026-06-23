@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { API_BASE_URL } from '../config';
 
 export default function CollegeLoginPage() {
   const [email, setEmail] = useState('');
@@ -12,7 +13,7 @@ export default function CollegeLoginPage() {
     e.preventDefault();
     (async () => {
       try {
-        const res = await fetch('http://localhost:8082/api/auth/login', {
+        const res = await fetch(`${API_BASE_URL}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -38,7 +39,6 @@ export default function CollegeLoginPage() {
       <div className="container" style={{ maxWidth: 520 }}>
         <div className="card" style={{ padding: 32 }}>
           <div style={{ marginBottom: 24 }}>
-            <div className="section-tag">College Login</div>
             <h1 className="section-title" style={{ marginBottom: 8 }}>College administrator access</h1>
             <p style={{ color: 'var(--text-secondary)' }}>Login to manage college listings, seats, and applications.</p>
           </div>
@@ -51,7 +51,9 @@ export default function CollegeLoginPage() {
               Password
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="form-input" placeholder="Enter your password" style={{ marginTop: 8 }} />
             </label>
-            <button type="submit" className="btn btn-primary">Login</button>
+            <div className="d-flex justify-content-center">
+              <button type="submit" className="btn btn-primary">Login</button>
+            </div>
           </form>
         </div>
       </div>

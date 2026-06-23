@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { API_BASE_URL } from '../config';
 
 export default function CollegeSearchPage() {
   const { user } = useApp();
   const location = useLocation();
   const [colleges, setColleges] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isRecommendMode = new URLSearchParams(location.search).get('recommend') === 'true';
   const [filters, setFilters] = useState({
     category: '',
     type: '',
@@ -18,23 +20,25 @@ export default function CollegeSearchPage() {
   });
 
   useEffect(() => {
-    const query = new URLSearchParams(location.search);
-    if (query.get('recommend') === 'true' && user) {
+    if (isRecommendMode && user) {
       const saved = localStorage.getItem(`profile_${user.email}`);
       if (saved) {
         const profile = JSON.parse(saved);
-        setFilters(prev => ({ 
-          ...prev, 
+        // Strictly populate filters from academic profile to drive automated recommendations
+        setFilters({ 
+          category: '',
+          type: '',
+          maxNirf: '',
+          minPlacement: '',
           city: profile.wishedPlace || '', 
           maxCutoff: profile.cutoffMark || '',
           maxFee: profile.maxFee || ''
-        }));
+        });
       }
-    } else {
-      // Reset profile-based filters if we are doing a standard search
-      setFilters(prev => ({ ...prev, city: '', maxCutoff: '', maxFee: '' }));
+    } else if (!isRecommendMode) {
+      // Reset filters when switching back to standard search mode
+      setFilters({ category: '', type: '', city: '', maxNirf: '', minPlacement: '', maxFee: '', maxCutoff: '' });
     }
-    fetchColleges();
   }, [location.search, user]);
 
   // Fetch whenever filters change (manually)
@@ -45,9 +49,15 @@ export default function CollegeSearchPage() {
   const fetchColleges = async () => {
     setLoading(true);
     try {
+      const queryParams = new URLSearchParams(location.search);
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, val]) => { if (val) params.append(key, val); });
-      const res = await fetch(`http://localhost:8082/api/college/list?${params.toString()}`);
+      
+      if (queryParams.get('recommend') === 'true') {
+        params.append('recommend', 'true');
+      }
+
+      const res = await fetch(`${API_BASE_URL}/college/list?${params.toString()}`);
       const data = await res.json();
       if (res.ok) setColleges(data);
     } catch (err) {
@@ -63,10 +73,11 @@ export default function CollegeSearchPage() {
   };
 
   return (
-    <div style={{ padding: 'calc(var(--nav-height) + 30px) 24px', background: 'var(--surface-2)', minHeight: '100vh' }}>
-      <div className="container" style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 30, maxWidth: '100%' }}>
+    <div style={{ padding: 'calc(var(--nav-height) + 30px) 24px', background: 'transparent', minHeight: '100vh' }}>
+      <div className="container-fluid px-lg-5">
+        <div className="row g-4">
         {/* Sidebar Filters */}
-        <aside>
+        <aside className="col-lg-3 col-md-4">
           <div className="card" style={{ padding: 20, position: 'sticky', top: 'calc(var(--nav-height) + 20px)' }}>
             <h3 style={{ marginBottom: 20 }}>Filters</h3>
             
@@ -120,7 +131,7 @@ export default function CollegeSearchPage() {
         </aside>
 
         {/* Results */}
-        <main>
+        <main className="col-lg-9 col-md-8">
           <div style={{ marginBottom: 20 }}>
             <h2 className="section-title">Found {colleges.length} Colleges</h2>
           </div>
@@ -128,15 +139,16 @@ export default function CollegeSearchPage() {
           {loading ? (
             <div style={{ textAlign: 'center', padding: 40 }}>Loading colleges...</div>
           ) : (
-            <div style={{ display: 'grid', gap: 20 }}>
+            <div className="row g-3">
               {colleges.map(college => (
-                <div key={college.id} className="card college-card-horizontal" style={{ display: 'flex', overflow: 'hidden', height: 220 }}>
-                  <img 
-                    src={college.imagePath || 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?w=400'} 
-                    alt={college.name} 
-                    style={{ width: 300, objectFit: 'cover' }} 
-                  />
-                  <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div key={college.id} className="col-12">
+                  <div className="card overflow-hidden h-100 shadow-sm border-0" style={{ background: 'var(--bg-card)' }}>
+                    <div className="row g-0">
+                      <div className="col-md-4">
+                        <img src={college.imagePath || 'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?w=400'} alt={college.name} className="img-fluid w-100 h-100" style={{ objectFit: 'cover', minHeight: '220px' }} />
+                      </div>
+                      <div className="col-md-8">
+                        <div style={{ padding: 20, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
@@ -145,23 +157,23 @@ export default function CollegeSearchPage() {
                           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>📍 {college.city}, {college.state}</p>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)' }}>₹{college.minFee?.toLocaleString()}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Avg. Annual Fee</div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--info)' }}>₹{college.minFee?.toLocaleString()}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Avg. Annual Fee</div>
                         </div>
                       </div>
 
                       <div style={{ display: 'flex', gap: 20, marginTop: 15 }}>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>{college.placementPercentage}%</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Placement</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--info)' }}>{college.placementPercentage}%</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Placement</div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>₹{college.avgPackage} LPA</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Avg Package</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--info)' }}>₹{college.avgPackage} LPA</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Avg Package</div>
                         </div>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 600 }}>#{college.nirf}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>NIRF Rank</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--info)' }}>#{college.nirf}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>NIRF Rank</div>
                         </div>
                       </div>
                     </div>
@@ -170,9 +182,9 @@ export default function CollegeSearchPage() {
                       <Link to={`/college/${college.id}`} className="btn btn-primary" style={{ padding: '8px 20px', fontSize: 13 }}>
                         View Details
                       </Link>
-                      <button className="btn btn-ghost" style={{ padding: '8px 20px', fontSize: 13, border: '1px solid var(--border)' }}>
-                        Compare
-                      </button>
+                    </div>
+                  </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -181,6 +193,7 @@ export default function CollegeSearchPage() {
           )}
         </main>
       </div>
+    </div>
     </div>
   );
 }

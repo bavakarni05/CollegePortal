@@ -6,10 +6,10 @@ import org.springframework.web.bind.annotation.RestController;
  
 @RestController
 @CrossOrigin(origins = "https://benevolent-manatee-9c00b9.netlify.app", allowedHeaders = "*")
-public class HelloController {
+public class RootController {
 
-    @GetMapping("/api/health")
-    public String health() {
-        return "College Portal API is running";
+    @GetMapping("/")
+    public String index() {
+        return "College Portal API is running successfully. Please use the frontend application to interact with the system.";
     }
 }

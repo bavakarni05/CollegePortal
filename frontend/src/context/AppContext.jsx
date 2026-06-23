@@ -3,10 +3,39 @@ import React, { createContext, useContext, useCallback, useState, useEffect } fr
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [wishlist, setWishlist] = useState([]);
-  const [compareList, setCompareList] = useState([]);
+  // Initialize state directly from localStorage to prevent flicker and ensure data persistence
+  const [token, setToken] = useState(() => {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth'));
+      return auth?.token || null;
+    } catch { return null; }
+  });
+
+  const [user, setUser] = useState(() => {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth'));
+      return auth?.user || null;
+    } catch { return null; }
+  });
+
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth'));
+      if (!auth?.user?.email) return [];
+      const saved = localStorage.getItem(`wishlist_${auth.user.email}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  const [compareList, setCompareList] = useState(() => {
+    try {
+      const auth = JSON.parse(localStorage.getItem('auth'));
+      if (!auth?.user?.email) return [];
+      const saved = localStorage.getItem(`compareList_${auth.user.email}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
   const [toast, setToast] = useState(null);
 
   const showToast = useCallback((message, type = 'default') => {
@@ -25,6 +54,12 @@ export function AppProvider({ children }) {
     }
     if (u) {
       setUser(u);
+      // Hydrate lists for the logged-in user immediately from their specific storage key
+      const savedWishlist = localStorage.getItem(`wishlist_${u.email}`);
+      setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
+      const savedCompare = localStorage.getItem(`compareList_${u.email}`);
+      setCompareList(savedCompare ? JSON.parse(savedCompare) : []);
+      
       showToast(`Welcome back, ${u.name}`,'success');
     }
   }, [showToast]);
@@ -32,36 +67,11 @@ export function AppProvider({ children }) {
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
+    setWishlist([]);
+    setCompareList([]);
     localStorage.removeItem('auth');
     showToast('Logged out successfully','default');
   }, [showToast]);
-
-  useEffect(() => {
-    try {
-      // Load Auth
-      const raw = localStorage.getItem('auth');
-      if (raw) {
-        const { token: t, user: u } = JSON.parse(raw);
-        if (t) setToken(t);
-        if (u) setUser(u);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user?.email) {
-      const savedWishlist = localStorage.getItem(`wishlist_${user.email}`);
-      setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
-      
-      const savedCompare = localStorage.getItem(`compareList_${user.email}`);
-      setCompareList(savedCompare ? JSON.parse(savedCompare) : []);
-    } else {
-      setWishlist([]);
-      setCompareList([]);
-    }
-  }, [user?.email]);
 
   const authHeaders = useCallback(() => {
     return token ? { Authorization: `Bearer ${token}` } : {};
